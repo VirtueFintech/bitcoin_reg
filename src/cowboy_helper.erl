@@ -1,4 +1,5 @@
 -module (cowboy_helper).
+-include ("bitcoin_reg.hrl").
 
 -export ([method/1]).
 -export ([path/1]).
@@ -68,8 +69,9 @@ json_data(Req) ->
     {ok, [{Json, true}], Req1} ->
       Data = jsx:decode(Json, [return_maps]),
       {ok, Data, Req1};
-    {ok, Props, Req1} ->
-      Data = maps:from_list(Props),
+    {ok, [{A, B}], Req1} ->
+      Val = <<A/binary, B/binary>>,
+      Data = jsx:decode(Val, [return_maps]),
       {ok, Data, Req1}
   end.
 
