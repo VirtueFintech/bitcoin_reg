@@ -15,10 +15,9 @@ Things needed to be installed:
 
 # Documentation
 
---------------|-------------------|--------------|-----------------------
- API Method   | Description       | HTTP Method  | URI 
---------------|-------------------|--------------|-----------------------
-Register Bitcoin | Bitcoin SUbscription | POST | http://localhost:8080/api/v1/register
+ | API Method | Description | HTTP Method | URI |
+ | --- | --- | --- | --- |
+ | Register Bitcoin | Bitcoin SUbscription | POST | http://localhost:8080/api/v1/register
 
 
 ## Bitcoin Registration
