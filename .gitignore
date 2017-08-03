@@ -1,0 +1,5 @@
+_rel
+deps
+.erlang.mk/
+ebin
+.bitcoin_reg.plt
