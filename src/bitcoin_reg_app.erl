@@ -9,10 +9,14 @@
 
 start(_Type, _Args) ->
   Dispatch = cowboy_router:compile(route()),
-  {ok, _} = cowboy:start_http(bitcoin_reg, 100,
-    [{port, 8080}],
-    [{env, [{dispatch, Dispatch}]}]
-  ),
+  RanchOptions = [{port, 8080}],
+  CowboyOptions = [
+    {env, [{dispatch, Dispatch}]},
+    {middlewares, [cowboy_router, middleware_cors, cowboy_handler]},
+    {compress, true},
+    {timeout, 12000}
+  ],  
+  {ok, _} = cowboy:start_http(bitcoin_reg, 100, RanchOptions, CowboyOptions),
   bitcoin_reg_sup:start_link().
 
 stop(_State) ->
