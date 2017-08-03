@@ -21,7 +21,7 @@ stop(_State) ->
 route() ->
   [
     {'_', [
-      {"/", main_handler, #{}},
+      {"/", handler_main, #{}},
       
       {"/auth", handler_auth, #{}},
       {"/auth/:username", handler_auth, #{}},
