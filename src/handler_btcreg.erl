@@ -30,7 +30,7 @@ is_authorized(Req, State) ->
       {true, Req1, State};
     {_, Token, Req1} ->
       ?INFO("Token: ~p~n", [Token]),
-      case xwalletapi_jwt:decode(Token) of
+      case bitcoin_reg_jwt:decode(Token) of
         {ok, JWT} ->
           ?DEBUG("Authentication is ok!~n"),
           {true, Req1, JWT};
@@ -45,6 +45,64 @@ route(Req, State) ->
   ?DEBUG("~p: Processing ~p, ~p~n", [?MODULE, Method, Path]),
   route(Method, Path, Req1, State).
 
+route(<<"POST">>, <<"/api/v1/register">>, Req, State) ->
+  ?INFO("Processing bitcoin registration~n"),
+  {ok, Data, Req1} = cowboy_helper:json_data(Req),
+
+  BTCAddress = maps:get(<<"btc_address">>, Data, <<"">>),
+  BTCTxHash = maps:get(<<"btc_tx_hash">>, Data, <<"">>),
+  BTCSig = maps:get(<<"btc_sig">>, Data, <<"">>),
+  ETHAddress = maps:get(<<"eth_address">>, Data, <<"">>),
+  Contact = maps:get(<<"contact">>, Data, <<"">>),
+  Referrer = maps:get(<<"referrer">>, Data, <<"">>),
+
+  % check for all mandatory fields
+  case BTCAddress =:= <<"">> orelse
+       BTCTxHash =:= <<"">> orelse
+       BTCSig =:= <<"">> orelse
+       ETHAddress =:= <<"">> orelse
+       Contact =:= <<"">> of
+    true ->
+      Res = [
+        {status, error}, 
+        {message, <<"Parameters btc_address, btc_tx_hash, eth_address, btc_sig and contact are mandatory">>}
+      ],
+      {ok, Req2} = cowboy_helper:json_reply(Res, Req1),
+      {false, Req2, State};
+    false ->
+      % ok, create the user.
+      {ok, TS} = tempo:format(iso8601, {now, erlang:timestamp()}),
+      UUID = util:uuid(),
+      User = #btc_reg{uuid=UUID, btc_address=BTCAddress, btc_tx_hash=BTCTxHash,
+                eth_address=ETHAddress, btc_sig=BTCSig, contact=Contact, referrer=Referrer,
+                created_at=TS, updated_at=TS},
+
+      ?INFO("Saving registration data: ~p~n", [User]),
+      case bitcoin_reg_db:save(User) of
+        {error, Err} ->
+          {ok, Req2} = cowboy_helper:json_reply([{error, Err}], Req1),
+          {false, Req2, State};
+        _ ->
+          Resp = [{ok, <<"data added">>}],
+          {ok, Req2} = cowboy_helper:json_reply(Resp, Req1),
+          {true, Req2, State}
+      end
+  end;
+
+route(<<"POST">>, <<"/api/v1/register/download">>, Req, State) ->
+  ?INFO("Downloading request. State = ~p~n", [State]),
+  case State =:= undefined of
+    true ->
+      Resp = [{error, <<"authentcation required">>}],
+      {ok, Req1} = cowboy_helper:json_reply(Resp, Req),
+      {true, Req1, State};
+    false ->
+      {ok, All} = bitcoin_reg_db:match(#btc_reg{_='_'}),
+      Resp = [{status, ok}, {data, parse_all(All)}],
+      {ok, Req1} = cowboy_helper:json_reply(Resp, Req),
+      {false, Req1, State}
+  end;
+
 route(<<"GET">>, Path, Req, State) ->
   ?WARN("Invalid request: GET -> ~p~n", [Path]),
   {jsx:encode([{error, enoimpl}]), Req, State};
@@ -54,3 +112,16 @@ route(Method, Path, Req, State) ->
   Resp = [{error, enoimpl}],
   {ok, Req1} = cowboy_helper:json_reply(Resp, Req),
   {false, Req1, State}.
+
+%% =============================================================================
+%% private functions
+%% =============================================================================
+parse_all(Data) ->
+  parse_all(Data, []).
+
+parse_all([H|T], Accu) ->
+  Rec = ?record_to_tuplelist(btc_reg, H),
+  parse_all(T, [Rec|Accu]);
+
+parse_all([], Accu) ->
+  lists:reverse(Accu).
