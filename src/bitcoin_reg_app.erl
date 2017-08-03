@@ -23,10 +23,10 @@ route() ->
     {'_', [
       {"/", handler_main, #{}},
       
-      {"/auth", handler_auth, #{}},
-      {"/auth/:username", handler_auth, #{}},
+      {"/api/v1/auth", handler_auth, #{}},
+      {"/api/v1/auth/:username", handler_auth, #{}},
 
-      {"/api/v1/register", handler_btcreg, #{}}
+      {"/api/v1/register/[...]", handler_btcreg, #{}}
     ]}
   ].
 
