@@ -77,7 +77,7 @@ route(Req, State) ->
   ?INFO("~p: Processing ~p, ~p, ~p~n", [?MODULE, Method, Path, State]),
   route(Method, Path, Req1, State).
 
-route(<<"GET">>, <<"/auth/", Username/binary>>, Req, State) ->
+route(<<"GET">>, <<"/api/v1/auth", Username/binary>>, Req, State) ->
   ?INFO("Getting info for ~p~n", [Username]),
   case bitcoin_reg_db:match(#btc_user{username=Username, _='_'}) of 
     {ok, [User]} ->
@@ -87,7 +87,7 @@ route(<<"GET">>, <<"/auth/", Username/binary>>, Req, State) ->
       {jsx:encode([{error, enoimpl}]), Req, State}
   end;
 
-route(<<"POST">>, <<"/auth">>, Req, State) ->
+route(<<"POST">>, <<"/api/v1/auth">>, Req, State) ->
   ?INFO("Creating new user~n"),
   {ok, Data, Req1} = cowboy_helper:json_data(Req),
   ?INFO("UserId: ~p, Data: ~p~n", [State, Data]),
@@ -126,7 +126,7 @@ route(<<"POST">>, <<"/auth">>, Req, State) ->
 
   end;
 
-route(<<"POST">>, <<"/auth/", Username/binary>>, Req, {Username, User} = State) ->
+route(<<"POST">>, <<"/api/v1/auth/", Username/binary>>, Req, {Username, User} = State) ->
   ?INFO("Authenticating user ~p, State: ~p~n", [Username, State]),
   {ok, Data, Req1} = cowboy_helper:json_data(Req),
   Password = maps:get(<<"password">>, Data, <<"">>),
