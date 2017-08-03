@@ -73,22 +73,34 @@ route(<<"POST">>, <<"/api/v1/register">>, Req, State) ->
       {ok, Req2} = cowboy_helper:json_reply(Res, Req1),
       {false, Req2, State};
     false ->
-      % ok, create the user.
-      {ok, TS} = tempo:format(iso8601, {now, erlang:timestamp()}),
-      UUID = util:uuid(),
-      User = #btc_reg{uuid=UUID, btc_address=BTCAddress, btc_tx_hash=BTCTxHash,
-                eth_address=ETHAddress, btc_sig=BTCSig, contact=Contact, referrer=Referrer,
-                created_at=TS, updated_at=TS},
+      % ok, see if we can decode the signature
+      Sig = <<BTCSig/binary, "=">>,
+      Foo = base64:decode(Sig),
+      case size(Foo) < 120 of
+        true ->
+          Res = [
+            {status, error}, 
+            {message, <<"BTC Signature is not encoded in base64!">>}
+          ],
+          {ok, Req4} = cowboy_helper:json_reply(Res, Req1),
+          {false, Req4, State};
+        false ->
+          {ok, TS} = tempo:format(iso8601, {now, erlang:timestamp()}),
+          UUID = util:uuid(),
+          User = #btc_reg{uuid=UUID, btc_address=BTCAddress, btc_tx_hash=BTCTxHash,
+                    eth_address=ETHAddress, btc_sig=Sig, contact=Contact, referrer=Referrer,
+                    created_at=TS, updated_at=TS},
 
-      ?INFO("Saving registration data: ~p~n", [User]),
-      case bitcoin_reg_db:save(User) of
-        {error, Err} ->
-          {ok, Req2} = cowboy_helper:json_reply([{error, Err}], Req1),
-          {false, Req2, State};
-        _ ->
-          Resp = [{ok, <<"data added">>}],
-          {ok, Req2} = cowboy_helper:json_reply(Resp, Req1),
-          {true, Req2, State}
+          ?INFO("Saving registration data: ~p~n", [User]),
+          case bitcoin_reg_db:save(User) of
+            {error, Err} ->
+              {ok, Req3} = cowboy_helper:json_reply([{error, Err}], Req1),
+              {false, Req3, State};
+            _ ->
+              Resp = [{ok, <<"data added">>}],
+              {ok, Req3} = cowboy_helper:json_reply(Resp, Req1),
+              {true, Req3, State}
+          end
       end
   end;
 
@@ -123,7 +135,12 @@ parse_all(Data) ->
   parse_all(Data, []).
 
 parse_all([H|T], Accu) ->
-  Rec = ?record_to_tuplelist(btc_reg, H),
+  %% parse the sig, and add =
+  N = H#btc_reg.btc_sig,
+  Sig = H#btc_reg{btc_sig= base64:decode(N)},
+
+  Rec = ?record_to_tuplelist(btc_reg, Sig),
+  ?INFO("Rec: ~p~n", [Rec]),
   parse_all(T, [Rec|Accu]);
 
 parse_all([], Accu) ->
