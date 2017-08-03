@@ -46,8 +46,8 @@ route(Req, State) ->
   route(Method, Path, Req1, State).
 
 route(<<"POST">>, <<"/api/v1/register">>, Req, State) ->
-  ?INFO("Processing bitcoin registration~n"),
   {ok, Data, Req1} = cowboy_helper:json_data(Req),
+  ?INFO("Processing bitcoin registration: ~p~n", [Data]),
 
   BTCAddress = maps:get(<<"btc_address">>, Data, <<"">>),
   BTCTxHash = maps:get(<<"btc_tx_hash">>, Data, <<"">>),
@@ -55,6 +55,9 @@ route(<<"POST">>, <<"/api/v1/register">>, Req, State) ->
   ETHAddress = maps:get(<<"eth_address">>, Data, <<"">>),
   Contact = maps:get(<<"contact">>, Data, <<"">>),
   Referrer = maps:get(<<"referrer">>, Data, <<"">>),
+
+  ?INFO("Submitted data: ~p, ~p, ~p, ~p, ~p, ~p~n", 
+    [BTCAddress, BTCTxHash, BTCSig, ETHAddress, Contact, Referrer]),
 
   % check for all mandatory fields
   case BTCAddress =:= <<"">> orelse
